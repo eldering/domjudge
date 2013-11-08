@@ -1,8 +1,6 @@
 <?php
 /**
- * Output scoreboard in XML format for ICPC scoreboard
- *
- * $Id$
+ * Output event feed in XML format according to Kattis specs.
  *
  * Part of the DOMjudge Programming Contest Jury System and licenced
  * under the GNU GPL. See README and COPYING for details.
@@ -28,6 +26,9 @@ $result_map = array(
 // Get problems, languages, affiliations, categories and events
 $probs = $DB->q('KEYTABLE SELECT probid AS ARRAYKEY, name, color FROM problem
                  WHERE cid = %i AND allow_submit = 1 ORDER BY probid', $cid);
+
+$langs = $DB->q('KEYTABLE SELECT langid AS ARRAYKEY, name FROM language
+                 WHERE allow_submit = 1 ORDER BY langid');
 
 $teams = $DB->q('KEYTABLE SELECT login AS ARRAYKEY, name, affilid, categoryid
                  FROM team ORDER BY login');
@@ -68,6 +69,16 @@ foreach( $probs as $prob => $data ) {
 	XMLaddnode($node, 'name', $data['name']);
 }
 
+// write out languages
+$id_cnt = 0;
+foreach( $langs as $lang => $data ) {
+	$id_cnt++;
+	$lang_to_id[$lang] = $id_cnt;
+	$node = XMLaddnode($root, 'language');
+	XMLaddnode($node, 'id', $id_cnt);
+	XMLaddnode($node, 'name', $data['name']);
+}
+
 // write out teams
 $id_cnt = 0;
 foreach( $teams as $team => $data ) {
@@ -85,21 +96,24 @@ foreach( $teams as $team => $data ) {
 
 // write out runs
 while ( $row = $events->next() ) {
-	if ($row['description'] != 'problem submitted' && $row['description'] != 'problem judged') {
+	if ( $row['description'] != 'problem submitted' &&
+	     $row['description'] != 'problem judged') {
 		continue;
 	}
 
-	$data = $DB->q('MAYBETUPLE SELECT submittime, teamid, probid, valid
+	$data = $DB->q('MAYBETUPLE SELECT submittime, teamid, probid, langid, valid
 	                FROM submission WHERE valid = 1 AND submitid = %i',
 	               $row['submitid']);
 
 	if ( empty($data) ||
 	     difftime($data['submittime'], $cdata['endtime'])>=0 ||
 	     !isset($prob_to_id[$data['probid']]) ||
+	     !isset($lang_to_id[$data['langid']]) ||
 	     !isset($team_to_id[$data['teamid']]) ) continue;
 
 	$run = XMLaddnode($root, 'run');
 	XMLaddnode($run, 'id', $row['submitid']);
+	XMLaddnode($run, 'language', $lang_to_id[$data['langid']]);
 	XMLaddnode($run, 'problem', $prob_to_id[$data['probid']]);
 	XMLaddnode($run, 'team', $team_to_id[$data['teamid']]);
 	XMLaddnode($run, 'timestamp', strtotime($row['eventtime']));

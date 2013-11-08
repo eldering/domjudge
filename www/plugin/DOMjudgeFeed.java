@@ -80,6 +80,11 @@ class Run {
 				return false;
 		} else if (!problem.equals(other.problem))
 			return false;
+		if (language == null) {
+			if (other.language != null)
+				return false;
+		} else if (!language.equals(other.language))
+			return false;
 		if (result == null) {
 			if (other.result != null)
 				return false;
@@ -113,12 +118,13 @@ class Run {
 		return true;
 	}
 
-	String id, problem, team, timestamp, time, judged, status, result, solved,
-			penalty;
+	String id, problem, language, team, timestamp, time, judged, status,
+	       result, solved, penalty;
 
 	Run(Element run) {
 		id = XMLHelper.getTextValue(run, "id");
 		problem = XMLHelper.getTextValue(run, "problem");
+		language = XMLHelper.getTextValue(run, "language");
 		team = XMLHelper.getTextValue(run, "team");
 		timestamp = XMLHelper.getTextValue(run, "timestamp");
 		time = XMLHelper.getTextValue(run, "time");
@@ -134,6 +140,7 @@ class Run {
 		ret += XMLHelper.simpleElement("id", id);
 		ret += XMLHelper.simpleElement("team", team);
 		ret += XMLHelper.simpleElement("problem", problem);
+		ret += XMLHelper.simpleElement("language", language);
 		ret += XMLHelper.simpleElement("timestamp", timestamp);
 		ret += XMLHelper.simpleElement("time", time);
 		ret += XMLHelper.simpleElement("judged", judged);
@@ -182,6 +189,7 @@ public class DOMjudgeFeed implements ActionListener {
 
 	private ContestInfo contestInfo = null;
 	private HashSet<String> problems = new HashSet<String>();
+	private HashSet<String> languages = new HashSet<String>();
 	private HashSet<String> teams = new HashSet<String>();
 	private HashSet<Run> runs = new HashSet<Run>();
 	private String filename;
@@ -267,6 +275,24 @@ public class DOMjudgeFeed implements ActionListener {
 					probTag += XMLHelper.simpleElement("name", name);
 					probTag += XMLHelper.e("problem");
 					System.out.println(probTag);
+				}
+			}
+		}
+
+		// parse language tags
+		NodeList languageTags = contest.getElementsByTagName("language");
+		if (languageTags != null) {
+			for (int i = 0; i < languageTags.getLength(); i++) {
+				Element language = (Element) languageTags.item(i);
+				String id = XMLHelper.getTextValue(language, "id");
+				if (id != null && !languages.contains(id)) {
+					languages.add(id);
+					String name = XMLHelper.getTextValue(language, "name");
+					String langTag = XMLHelper.s("language");
+					langTag += XMLHelper.simpleElement("id", id);
+					langTag += XMLHelper.simpleElement("name", name);
+					langTag += XMLHelper.e("language");
+					System.out.println(langTag);
 				}
 			}
 		}
