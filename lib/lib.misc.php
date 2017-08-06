@@ -104,19 +104,27 @@ function problemVisible($probid)
 	$fdata = calcFreezeData($cdata);
 	if ( !$fdata['cstarted'] ) return FALSE;
 
-	$eqteamid = is_null($userdata['teamid']) ? "IS NULL" : ("= " . strval($userdata['teamid']));
+	if ( $fdata['showfinal'] ) return TRUE;
+
+	// Subquery to see if team solved the prerequisite problem.
+	$teamsolved = ' FALSE %_';
+	if ( !empty($userdata['teamid']) ) {
+		$teamsolved = "EXISTS(SELECT submitid FROM submission s
+		                      LEFT JOIN judging j USING (submitid)
+		                      WHERE s.cid = contestproblem.cid
+		                        AND s.teamid = %s
+		                        AND s.probid = contestproblem.previd
+		                        AND j.result = 'correct'
+	                            AND j.valid = 1)";
+	}
+
 	return $DB->q('MAYBETUPLE SELECT probid FROM problem
 	               INNER JOIN contestproblem USING (probid)
 	               WHERE cid = %i AND allow_submit = 1 AND probid = %i
-	                 AND (previd is NULL
-	                      OR ' . ((IS_JURY || $fdata['showfinal']) ? 'TRUE' : 'FALSE') . '
-	                      OR EXISTS(SELECT * FROM submission JOIN judging USING (submitid)
-	                                WHERE submission.cid = contestproblem.cid
-	                                   AND submission.teamid ' . $eqteamid . '
-	                                   AND submission.probid = contestproblem.previd
-	                                   AND judging.result = \'correct\'
-	                                   AND judging.valid = 1))',
-	              $cdata['cid'], $probid) !== NULL;
+	                 AND ( previd is NULL
+	                       OR ' . ( $fdata['showfinal'] ? 'TRUE' : 'FALSE' ) . '
+	                       OR ' . $teamsolved . ' )',
+	              $cdata['cid'], $probid, $userdata['teamid']) !== NULL;
 }
 
 /**
