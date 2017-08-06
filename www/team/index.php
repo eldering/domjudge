@@ -83,8 +83,8 @@ HTML;
 
 	$probs = array();
 	foreach($probdata as $probinfo) {
-		if(problemVisible($probinfo['probid'])) {
-			$probs[$probinfo['probid']]=$probinfo['shortname'];
+		if ( problemVisible($probinfo['probid']) ) {
+			$probs[$probinfo['probid']] = $probinfo['shortname'];
 		}
 	}
 	$probs[''] = 'problem';
