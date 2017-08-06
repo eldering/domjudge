@@ -76,6 +76,11 @@ CREATE TABLE `internal_error` (
 ALTER TABLE `testcase`
   MODIFY COLUMN `description` longblob COMMENT 'Description of this testcase';
 
+ALTER TABLE `contestproblem`
+  ADD COLUMN `previd` int(4) unsigned DEFAULT NULL COMMENT 'ID of problem that must be solved before unlocking this problem' AFTER `points`,
+  ADD KEY `previd` (`previd`),
+  ADD CONSTRAINT `contestproblem_ibfk_3` FOREIGN KEY (`previd`) REFERENCES `problem` (`probid`) ON DELETE SET NULL;
+
 --
 -- Transfer data from old to new structure
 --

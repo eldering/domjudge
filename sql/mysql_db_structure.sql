@@ -120,6 +120,7 @@ CREATE TABLE `contestproblem` (
   UNIQUE KEY `shortname` (`cid`,`shortname`(190)),
   KEY `cid` (`cid`),
   KEY `probid` (`probid`),
+  KEY `previd` (`previd`),
   CONSTRAINT `contestproblem_ibfk_1` FOREIGN KEY (`cid`) REFERENCES `contest` (`cid`) ON DELETE CASCADE,
   CONSTRAINT `contestproblem_ibfk_2` FOREIGN KEY (`probid`) REFERENCES `problem` (`probid`) ON DELETE CASCADE,
   CONSTRAINT `contestproblem_ibfk_3` FOREIGN KEY (`previd`) REFERENCES `problem` (`probid`) ON DELETE SET NULL

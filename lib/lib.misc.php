@@ -104,15 +104,13 @@ function problemVisible($probid)
 	$fdata = calcFreezeData($cdata);
 	if ( !$fdata['cstarted'] ) return FALSE;
 
-	if ( $fdata['showfinal'] ) return TRUE;
-
 	// Subquery to see if team solved the prerequisite problem.
 	$teamsolved = ' FALSE %_';
 	if ( !empty($userdata['teamid']) ) {
 		$teamsolved = "EXISTS(SELECT submitid FROM submission s
 		                      LEFT JOIN judging j USING (submitid)
 		                      WHERE s.cid = contestproblem.cid
-		                        AND s.teamid = %s
+		                        AND s.teamid = %i
 		                        AND s.probid = contestproblem.previd
 		                        AND j.result = 'correct'
 	                            AND j.valid = 1)";
