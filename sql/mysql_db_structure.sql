@@ -401,6 +401,24 @@ CREATE TABLE `scorecache` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Scoreboard cache';
 
 --
+-- Table structure for table `scorerowcache`
+--
+
+CREATE TABLE `scorerowcache` (
+  `cid` int(4) unsigned NOT NULL COMMENT 'Contest ID',
+  `eventid` int(4) unsigned NOT NULL COMMENT 'Event ID that triggered this row''s creation',
+  `teamid` int(4) unsigned NOT NULL COMMENT 'Team ID',
+  `points_restricted` int(4) unsigned NOT NULL DEFAULT '0' COMMENT 'Total correctness points (restricted audience)',
+  `totaltime_restricted` int(4) NOT NULL DEFAULT '0' COMMENT 'Total penalty time in minutes (restricted audience)',
+  `scorerow_restricted` longtext COMMENT 'JSON encoded scoreboard row (restricted audience)',
+  `points_public` int(4) unsigned NOT NULL DEFAULT '0' COMMENT 'Total correctness points (public)',
+  `totaltime_public` int(4) NOT NULL DEFAULT '0' COMMENT 'Total penalty time in minutes (public)',
+  `scorerow_public` longtext COMMENT 'JSON encoded scoreboard row (public)',
+  PRIMARY KEY (`cid`,`eventid`),
+  KEY `teamid` (`teamid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Scoreboard team row cache';
+
+--
 -- Table structure for table `submission`
 --
 
