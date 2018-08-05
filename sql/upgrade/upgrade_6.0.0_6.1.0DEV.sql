@@ -8,8 +8,30 @@
 --
 
 -- @UPGRADE-CHECK@
-INSERT INTO `configuration` (`name`, `value`) VALUES ('data_source', '0');
-DELETE FROM `configuration` WHERE `name` = 'data_source';
+ALTER TABLE `problem` ADD  COLUMN `output_image_gen` varchar(32);
+ALTER TABLE `problem` DROP COLUMN `output_image_gen`;
 
 INSERT INTO `configuration` (`name`, `value`, `type`, `public`, `description`) VALUES
 ('data_source', '0', 'int', '0', 'Source of data. Choices: 0 = all local, 1 = configuration data external, 2 = configuration and live data external');
+
+--
+-- Create additional structures
+--
+
+ALTER TABLE `problem`
+  ADD COLUMN `output_image_gen` varchar(32) DEFAULT NULL COMMENT 'Script to generate a graphical representation of the team output for a testcase';
+
+--
+-- Transfer data from old to new structure
+--
+
+
+--
+-- Add/remove sample/initial contents
+--
+
+
+--
+-- Finally remove obsolete structures after moving data
+--
+
