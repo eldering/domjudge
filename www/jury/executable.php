@@ -193,21 +193,33 @@ if (IS_ADMIN) {
 <tr><td>content:     </td><td><a href="show_executable.php?id=<?php echo specialchars($id)?>">view file contents</a></td></tr>
 <tr><td>used as <?=$data['type'] ?> script:</td><td>
 <?php
-if ($data['type'] == 'compare') {
-    $res = $DB->q('SELECT probid AS id FROM problem
-                   WHERE special_compare = %s ORDER BY probid', $data['execid']);
-    $page = "problem";
-    $prefix = "p";
-} elseif ($data['type'] == 'compile') {
-    $res = $DB->q('SELECT langid AS id FROM language
-                   WHERE compile_script = %s ORDER BY langid', $data['execid']);
-    $page = "language";
-    $prefix = "";
-} elseif ($data['type'] == 'run') {
-    $res = $DB->q('SELECT probid AS id FROM problem
-                   WHERE special_run = %s ORDER BY probid', $data['execid']);
-    $page = "problem";
-    $prefix = "p";
+switch ( $data['type'] ) {
+    case 'compare':
+        $res = $DB->q('SELECT probid AS id FROM problem
+                       WHERE special_compare = %s ORDER BY probid', $data['execid']);
+        $page = "problem";
+        $prefix = "p";
+        break;
+
+    case 'run':
+        $res = $DB->q('SELECT probid AS id FROM problem
+                       WHERE special_run = %s ORDER BY probid', $data['execid']);
+        $page = "problem";
+        $prefix = "p";
+        break;
+
+    case 'image':
+        $res = $DB->q('SELECT probid AS id FROM problem
+                       WHERE image_gen = %s ORDER BY probid', $data['execid']);
+        $page = "problem";
+        $prefix = "p";
+        break;
+
+    case 'compile':
+        $res = $DB->q('SELECT langid AS id FROM language
+                       WHERE compile_script = %s ORDER BY langid', $data['execid']);
+        $page = "language";
+        $prefix = "";
 }
 $used = false;
 if (($data['type'] == 'compare' || $data['type'] == 'run') &&
