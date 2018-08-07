@@ -1429,6 +1429,8 @@ function rest_intid(string $endpoint, $extid, $cid = null)
  *            passed as argument. Must be specified when deleting an
  *            entry or if no DB table is associated to $type.
  *            Can be null, one ID or an array of ID's.
+ *
+ * Returns an array of event IDs created, or null on failure.
  */
 // TODO: we should probably integrate this function with auditlog().
 function eventlog(string $type, $dataids, string $action, $cid = null, $json = null, $ids = null)
@@ -1441,12 +1443,12 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
 
     if (count($dataids) > 1 && isset($ids)) {
         logmsg(LOG_WARNING, "eventlog: passing multiple dataid's while also passing one or more ID's not allowed yet");
-        return;
+        return null;
     }
 
     if (count($dataids) > 1 && isset($json)) {
         logmsg(LOG_WARNING, "eventlog: passing multiple dataid's while also passing a JSON object not allowed yet");
-        return;
+        return null;
     }
 
     // Make a combined string to keep track of the data ID's
@@ -1474,15 +1476,15 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
     }
     if (!isset($endpoint)) {
         logmsg(LOG_WARNING, "eventlog: invalid endpoint '$type' specified");
-        return;
+        return null;
     }
     if (!in_array($action, $actions)) {
         logmsg(LOG_WARNING, "eventlog: invalid action '$action' specified");
-        return;
+        return null;
     }
     if ($endpoint['url']===null) {
         logmsg(LOG_DEBUG, "eventlog: no endpoint for '$type', ignoring");
-        return;
+        return null;
     }
 
     // Look up external/API ID from various sources.
@@ -1506,7 +1508,7 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
     // State is a special case, as it works without an ID
     if ($type !== 'state' && count(array_filter($ids)) !== count($dataids)) {
         logmsg(LOG_WARNING, "eventlog: API ID not specified or inferred from data");
-        return;
+        return null;
     }
 
     // Make sure ID arrays are 0-indexed
@@ -1539,7 +1541,7 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
     }
     if (count($cids)==0) {
         logmsg(LOG_INFO, "eventlog: no active contests associated to update.");
-        return;
+        return null;
     }
 
     // TODO: if some ID's contain a comma, this breaks
@@ -1580,7 +1582,7 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
             // for example because it belongs to an invisible jury
             // team. If we don't have data, there's also no point in
             // trying to insert anything in the eventlog table.
-            return;
+            return null;
         }
     }
 
@@ -1630,6 +1632,8 @@ function eventlog(string $type, $dataids, string $action, $cid = null, $json = n
 
     logmsg(LOG_DEBUG, "eventlog: ${action}d $type/$idsCombined " .
            'for '.count($cids).' contest(s)');
+
+    return $eventids;
 }
 
 $resturl = $restuser = $restpass = null;
