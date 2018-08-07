@@ -50,7 +50,11 @@ if ($cnt == 0) {
 }
 
 if (dbconfig_get('verification_required', 0)) {
-    calcScoreRow($jdata['cid'], $jdata['teamid'], $jdata['probid']);
+    $eventid = $DB->q('MAYBEVALUE SELECT eventid FROM event
+                       WHERE cid = %i AND action = "update"
+                       AND datatype = "judging" AND dataid = %i',
+                      $jdata['cid'], $id);
+    calcScoreRow($jdata['cid'], $jdata['teamid'], $jdata['probid'], $eventid);
     updateBalloons($jdata['submitid']);
 }
 

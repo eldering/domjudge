@@ -694,11 +694,12 @@ if (!isset($api)) {
                 // log to event table if no verification required
                 // (case of verification required is handled in www/jury/verify.php)
                 if (! dbconfig_get('verification_required', 0) && !isset($row['rejudgingid'])) {
-                    eventlog('judging', $judgingid, 'update', $row['cid']);
+                    $eventids = eventlog('judging', $judgingid, 'update', $row['cid']);
                 }
-                $DB->q('COMMIT');
 
-                calcScoreRow($row['cid'], $row['teamid'], $row['probid']);
+                calcScoreRow($row['cid'], $row['teamid'], $row['probid'], reset($eventids));
+
+                $DB->q('COMMIT');
 
                 // We call alert here for the failed submission. Note that
                 // this means that these alert messages should be treated
@@ -813,7 +814,6 @@ if (!isset($api)) {
                                FROM judging
                                LEFT JOIN submission s USING(submitid)
                                WHERE judgingid = %i', $args['judgingid']);
-                calcScoreRow($row['cid'], $row['teamid'], $row['probid']);
 
                 // We call alert here before possible validation. Note
                 // that this means that these alert messages should be
@@ -823,14 +823,19 @@ if (!isset($api)) {
                     "submission $row[submitid], judging $args[judgingid]: $result"
                 );
 
+                $DB->q('START TRANSACTION');
                 // log to event table if no verification required
                 // (case of verification required is handled in www/jury/verify.php)
                 if (! dbconfig_get('verification_required', 0)) {
                     if (!isset($jud['rejudgingid'])) {
-                        eventlog('judging', $args['judgingid'], 'update', $row['cid']);
+                        $eventids = eventlog('judging', $args['judgingid'], 'update', $row['cid']);
                         updateBalloons($row['submitid']);
                     }
                 }
+
+                calcScoreRow($row['cid'], $row['teamid'], $row['probid'], reset($eventids));
+
+                $DB->q('COMMIT');
 
                 auditlog('judging', $args['judgingid'], 'judged', $result, $args['judgehost']);
 

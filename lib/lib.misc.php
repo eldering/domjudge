@@ -216,13 +216,13 @@ function calcContestTime(float $walltime, int $cid) : int
 /**
  * Scoreboard calculation
  *
- * Given a contestid, teamid and a problemid,
+ * Given a contestid, teamid, problemid, and optional associated eventid
  * (re)calculate the values for one row in the scoreboard.
  *
  * Due to current transactions usage, this function MUST NOT contain
  * any START TRANSACTION or COMMIT statements.
  */
-function calcScoreRow(int $cid, int $team, int $prob)
+function calcScoreRow(int $cid, int $team, int $prob, int $eventid = null)
 {
     global $DB;
 
@@ -305,7 +305,7 @@ function calcScoreRow(int $cid, int $team, int $prob)
            $submitted_j, $pending_j, $time_j, $correct_j,
            $submitted_p, $pending_p, $time_p, $correct_p);
 
-    // If we found a new correct result, update the rank cache too.
+    // If we found a new correct result, update the rank and scorerow cache too.
     if ($correct_j > 0 || $correct_p > 0) {
 
         logmsg(LOG_DEBUG, "updating rankcache '$cid' '$team'");
@@ -339,12 +339,41 @@ function calcScoreRow(int $cid, int $team, int $prob)
                $cid, $team,
                $num_points['restricted'], $total_time['restricted'],
                $num_points['public'], $total_time['public']);
-    }
 
-    // Insert a new row in the scorerow table.
-    $prevrow = $DB->q('MAYBETUPLE SELECT * FROM scorerowcache
-                       WHERE cid = %i AND teamid = %i
-                       ORDER BY eventid DESC LIMIT 1', $cid, $team);
+        if ($eventid!==null) {
+
+            logmsg(LOG_DEBUG, "updating scorerow cache '$cid' '$team'");
+
+            // Fetch previous scorerow and update from there.
+            $prevrow = $DB->q('MAYBETUPLE SELECT * FROM scorerowcache
+                               WHERE cid = %i AND teamid = %i
+                               ORDER BY eventid DESC LIMIT 1', $cid, $team);
+
+            $scorerow = array('public' => array(), 'restricted' => array());
+            foreach (array('public', 'restricted') as $variant) {
+                if (isset($prevrow)) {
+                    $scorerow[$variant] = dj_json_decode($prevrow['scorerow_'.$variant]);
+                }
+                $scorerow[$variant][$prob] = array(
+                    'is_correct'  => ($variant == 'restricted' ? $correct_j : $correct_p),
+                    'solvetime'   => ($variant == 'restricted' ? $time_j : $time_p),
+                    'submissions' => ($variant == 'restricted' ? $submitted_j : $submitted_p),
+                    'pending'     => ($variant == 'restricted' ? $pending_j : $pending_p),
+                );
+            }
+
+            // Add a new scorerow cache entry.
+            $DB->q('INSERT INTO scorerowcache (cid, eventid, teamid,
+                    points_restricted, totaltime_restricted, scorerow_restricted,
+                    points_public, totaltime_public, scorerow_public)
+                    VALUES (%i,%i,%i,%i,%i,%s,%i,%i,%s)',
+                   $cid, $eventid, $team,
+                   $num_points['restricted'], $total_time['restricted'],
+                   dj_json_encode($scorerow['restricted']),
+                   $num_points['public'], $total_time['public'],
+                   dj_json_encode($scorerow['public']));
+        }
+    }
 
     if ( $DB->q("VALUE SELECT RELEASE_LOCK('$lockstr')") != 1 ) {
         error("calcScoreRow failed to release lock '$lockstr'");
@@ -927,11 +956,12 @@ function submit_solution(
         $DB->q('UPDATE submission SET expected_results=%s
                 WHERE submitid=%i', dj_json_encode($results), $id);
     }
-    eventlog('submission', $id, 'create', $contest);
-    $DB->q('COMMIT');
+    $eventids = eventlog('submission', $id, 'create', $contest);
 
     // Recalculate scoreboard cache for pending submissions
-    calcScoreRow($contest, $teamid, $probid);
+    calcScoreRow($contest, $teamid, $probid, reset($eventids));
+
+    $DB->q('COMMIT');
 
     alert('submit', "submission $id: team $teamid, language $langid, problem $probid");
 

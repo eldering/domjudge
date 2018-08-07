@@ -34,10 +34,10 @@ $sdata = $DB->q('TUPLE SELECT submitid, cid, teamid, probid
 
 // KLUDGE: We can't log an "undelete", so we re-"create".
 // FIXME: We should also delete/recreate any dependent judging(runs).
-eventlog('submission', $id, ($val ? 'create' : 'delete'), $cid);
+$eventids = eventlog('submission', $id, ($val ? 'create' : 'delete'), $cid);
 auditlog('submission', $id, 'marked ' . ($val?'valid':'invalid'));
 
-calcScoreRow($sdata['cid'], $sdata['teamid'], $sdata['probid']);
+calcScoreRow($sdata['cid'], $sdata['teamid'], $sdata['probid'], reset($eventids));
 
 /* redirect back. */
 header('Location: submission.php?id=' .

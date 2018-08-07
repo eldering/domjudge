@@ -348,12 +348,12 @@ while ($cdata['cid']==$cid && difftime(now(), $cdata['endtime'])<0) { // bug!
                                  VALUES (%i, %i, %s, %s, %s, %i)',
                                 $cid, $submitid, $stime, $stime, $subm[$fresult], (int)$verify);
 
-            calcScoreRow($cid, $subm['teamid'], $probid);
+            $eventids = eventlog('submission', $submitid, 'create', $cid);
+            eventlog('judging', $judgingid, 'create', $cid);
+
+            calcScoreRow($cid, $subm['teamid'], $probid, reset($eventids));
 
             $DB->q('COMMIT');
-
-            eventlog('submission', $submitid, 'create', $cid);
-            eventlog('judging', $judgingid, 'create', $cid);
 
             logmsg(LOG_INFO, "inserted submission $subm[$fteam]/$subm[$fprob]");
             $subm['inserted'] = true;
