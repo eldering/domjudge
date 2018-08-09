@@ -14,6 +14,89 @@
  */
 require_once(LIBDIR . '/lib.misc.php');
 
+function genScoreCell($srow)
+{
+    $penalty = calcPenaltyTime($srow['is_correct'], $srow['submissions']);
+
+    return array(
+        'is_correct'      => (bool) $srow['is_correct'],
+        'num_submissions' => $srow['submissions'],
+        'num_pending'     => $srow['pending'],
+        'time'            => $srow['solvetime'],
+        'penalty'         => $penalty
+    );
+}
+
+function insertScoreData(&$MATRIX, &$SCORES, $cid, $teams, $probs, $variant, $eventid = null)
+{
+    global $DB;
+
+    if ($eventid===null) {
+
+        // Get all stuff from the cached table from this contest
+        $query = "SELECT points, teamid, probid,
+                         submissions_$variant AS submissions,
+                         pending_$variant AS pending,
+                         solvetime_$variant AS solvetime,
+                         is_correct_$variant AS is_correct
+                  FROM scorecache JOIN contestproblem USING(probid,cid)
+                  WHERE cid = %i";
+        $scoredata = $DB->q($query, $cid);
+
+        // Loop over all info from the scoreboard cache and put it in our own datastructure.
+        while ($srow = $scoredata->next()) {
+            $teamid = $srow['teamid'];
+            $probid = $srow['probid'];
+
+            // Skip this row if the team or problem is not known by us.
+            if (! array_key_exists($teamid, $teams) ||
+                ! array_key_exists($probid, $probs)) {
+                continue;
+            }
+
+            $MATRIX[$teamid][$probid] = genScoreCell($srow);
+
+            // Calculate totals for this team.
+            if ($srow['is_correct']) {
+                $SCORES[$teamid]['num_points'] += $srow['points'];
+                $SCORES[$teamid]['solve_times'][] = scoretime($srow['solvetime']);
+                $SCORES[$teamid]['total_time'] += scoretime($srow['solvetime'])
+                                                  + $MATRIX[$teamid][$probid]['penalty'];
+            }
+        }
+    } else {
+        $query = "SELECT teamid, points_$variant AS points,
+                                 totaltime_$variant AS totaltime,
+                                 scorerow_$variant AS scorerow
+                  FROM scorerowcache
+                  WHERE cid = %i AND eventid <= %i
+                  ORDER BY teamid, eventid DESC";
+        $scoredata = $DB->q($query, $cid, $eventid);
+
+        // Loop over all rows from the scorerow cache and put it in our own datastructure.
+        while ($srow = $scoredata->next()) {
+            $teamid = $srow['teamid'];
+            if (isset($MATRIX[$srow['teamid']]) ||
+                ! array_key_exists($teamid, $teams)) {
+                continue;
+            }
+            // Fill our matrix with the scores from the JSON scorerow
+            $scorerow = dj_json_decode($srow['scorerow']);
+            foreach ($scorerow as $probid => $pdata) {
+                if (! array_key_exists($probid, $probs)) {
+                    continue;
+                }
+
+                $MATRIX[$teamid][$probid] = genScoreCell($pdata);
+                $SCORES[$teamid]['solve_times'][] = scoretime($pdata['solvetime']);
+            }
+
+            $SCORES[$teamid]['num_points'] = $srow['points'];
+            $SCORES[$teamid]['total_time'] = $srow['totaltime'];
+        }
+    }
+}
+
 /**
  * Generate scoreboard data based on the cached data in table
  * 'scorecache'. If the function is called while $jury set to true,
@@ -26,6 +109,8 @@ require_once(LIBDIR . '/lib.misc.php');
  * The $visible_only determines whether only publicly visible teams
  * are included, or all. Only relevant when $jury is true.
  *
+ * If $eventid is set, generate the scoreboard as of this event (inclusive).
+ *
  * This function returns an array (scores, summary, matrix)
  * containing the following:
  *
@@ -37,10 +122,8 @@ require_once(LIBDIR . '/lib.misc.php');
  * summary(num_points, total_time, affils[affilid], countries[country], problems[probid]
  *    probid(num_submissions, num_pending, num_correct, best_time_sort[sortorder] )
  */
-function genScoreBoard(array $cdata, bool $jury = false, $filter = null, bool $visible_only = false) : array
+function genScoreBoard(array $cdata, bool $jury = false, $filter = null, bool $visible_only = false, int $eventid = null) : array
 {
-    global $DB;
-
     $cid = $cdata['cid'];
 
     $fdata = calcFreezeData($cdata);
@@ -67,42 +150,7 @@ function genScoreBoard(array $cdata, bool $jury = false, $filter = null, bool $v
         $variant = 'public';
     }
 
-    // Get all stuff from the cached table from this contest
-    $query = "SELECT points,
-              teamid, probid,
-              submissions_$variant AS submissions,
-              pending_$variant AS pending,
-              solvetime_$variant AS solvetime,
-              is_correct_$variant AS is_correct
-              FROM scorecache JOIN contestproblem USING(probid,cid) WHERE cid = %i";
-    $scoredata = $DB->q($query, $cid);
-
-    // loop all info the scoreboard cache and put it in our own datastructure
-    while ($srow = $scoredata->next()) {
-
-        // skip this row if the team or problem is not known by us
-        if (! array_key_exists($srow['teamid'], $teams) ||
-            ! array_key_exists($srow['probid'], $probs)) {
-            continue;
-        }
-
-        $penalty = calcPenaltyTime($srow['is_correct'], $srow['submissions']);
-
-        // fill our matrix with the scores from the database
-        $MATRIX[$srow['teamid']][$srow['probid']] = array(
-            'is_correct'      => (bool) $srow['is_correct'],
-            'num_submissions' => $srow['submissions'],
-            'num_pending'     => $srow['pending'],
-            'time'            => $srow['solvetime'],
-            'penalty'         => $penalty );
-
-        // calculate totals for this team
-        if ($srow['is_correct']) {
-            $SCORES[$srow['teamid']]['num_points'] += $srow['points'];
-            $SCORES[$srow['teamid']]['solve_times'][] = scoretime($srow['solvetime']);
-            $SCORES[$srow['teamid']]['total_time'] += scoretime($srow['solvetime']) + $penalty;
-        }
-    }
+    insertScoreData($MATRIX, $SCORES, $cid, $teams, $probs, $variant, $eventid);
 
     // sort the array using our custom comparison function
     uasort($SCORES, 'cmp');
@@ -313,6 +361,8 @@ function renderScoreBoardTable(
     $probs   = $sdata['problems'];
     $categs  = $sdata['categories'];
     unset($sdata);
+
+    //    debug($teams,$probs);
 
     // configuration
     $SHOW_FLAGS             = dbconfig_get('show_flags', 1);
@@ -703,8 +753,9 @@ function renderScoreBoardTable(
  *              with keys 'affilid', 'country', 'categoryid' pointing
  *              to array of values to filter on these.
  * $sdata       if not NULL, use this as scoreboard data instead of fetching it locally
+ * $eventid     if not NULL, generate scoreboard as of this event using scorerowcache
  */
-function putScoreBoard(array $cdata, $myteamid = null, bool $static = false, $filter = false, $sdata = null)
+function putScoreBoard(array $cdata, $myteamid = null, bool $static = false, $filter = false, $sdata = null, int $eventid = null)
 {
     global $DB, $pagename;
 
@@ -715,7 +766,7 @@ function putScoreBoard(array $cdata, $myteamid = null, bool $static = false, $fi
 
     $fdata = calcFreezeData($cdata);
     if ($sdata === null) {
-        $sdata = genScoreBoard($cdata, IS_JURY, $filter);
+        $sdata = genScoreBoard($cdata, IS_JURY, $filter, false, $eventid);
     }
 
     $moreinfo = '';
@@ -732,7 +783,7 @@ function putScoreBoard(array $cdata, $myteamid = null, bool $static = false, $fi
         $moreinfo = printContestStart($cdata);
     } else {
         $moreinfo = "starts: " . printtime($cdata['starttime']) .
-                " - ends: " . printtime($cdata['endtime']);
+                   " - ends: " . printtime($cdata['endtime']);
     }
 
     if (IS_JURY) {
@@ -937,7 +988,7 @@ function initScorefilter() : array
  * Output a team row from the scoreboard based on the cached data in
  * table 'scoreboard'.
  */
-function putTeamRow(array $cdata, array $teamids)
+function putTeamRow(array $cdata, array $teamids, int $eventid = null)
 {
     global $DB;
 
@@ -1042,7 +1093,7 @@ function putTeamRow(array $cdata, array $teamids)
         );
     } else {
         // Otherwise, calculate scoreboard as jury to display non-visible teams
-        $sdata = genScoreBoard($cdata, true);
+        $sdata = genScoreBoard($cdata, true, null, false, $eventid);
     }
 
     // Render the row based on this info
