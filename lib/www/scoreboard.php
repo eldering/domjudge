@@ -69,9 +69,12 @@ function insertScoreData(&$MATRIX, &$SCORES, $cid, $teams, $probs, $variant, $ev
                                  totaltime_$variant AS totaltime,
                                  scorerow_$variant AS scorerow
                   FROM scorerowcache
-                  WHERE cid = %i AND eventid <= %i
-                  ORDER BY teamid, eventid DESC";
-        $scoredata = $DB->q($query, $cid, $eventid);
+                  WHERE cid = %i AND eventid IN
+                  ( SELECT MAX(eventid)
+                    FROM scorerowcache
+                    WHERE cid = %i AND eventid <= %i
+                    GROUP BY teamid )";
+        $scoredata = $DB->q($query, $cid, $cid, $eventid);
 
         // Loop over all rows from the scorerow cache and put it in our own datastructure.
         while ($srow = $scoredata->next()) {
