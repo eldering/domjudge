@@ -58,7 +58,7 @@ mysql_log "CREATE DATABASE IF NOT EXISTS \`domjudge\` DEFAULT CHARACTER SET utf8
 mysql_log "CREATE USER IF NOT EXISTS \`domjudge\`@'%' IDENTIFIED BY 'domjudge';"
 mysql_log "GRANT SELECT, INSERT, UPDATE, DELETE ON \`domjudge\`.* TO 'domjudge'@'%';"
 mysql_log "FLUSH PRIVILEGES;"
-echo "unused:sqlserver:domjudge:domjudge:domjudge:3306" > /opt/domjudge/domserver/etc/dbpasswords.secret
+echo 'unused:sqlserver:domjudge:domjudge:domjudge_db-pw+% #$*)@(!/;,.:3306' > /opt/domjudge/domserver/etc/dbpasswords.secret
 
 # Show some MySQL debugging
 mysql_log "show databases"
@@ -73,6 +73,7 @@ if [ "${db}" = "install" ]; then
     section_end
 elif [ "${db}" = "upgrade" ]; then
     section_start "Upgrade DOMjudge database"
+    /opt/domjudge/domserver/bin/dj_setup_database update-password
     /opt/domjudge/domserver/bin/dj_setup_database upgrade
     section_end
 fi
