@@ -292,8 +292,8 @@ inplace-postinstall-nginx: inplace-postinstall-permissions
 
 # Removes created symlinks; generated logs, submissions, etc. remain in output subdir.
 inplace-uninstall-l:
-	rm -rf $(judgehost_libjudgedir)
-	rm -rf $(judgehost_bindir)
+	-rm -rf $(judgehost_libjudgedir)
+	-rm -rf $(judgehost_bindir)
 
 # Rules to configure and build for a Coverity scan.
 coverity-conf:

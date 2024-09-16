@@ -43,7 +43,7 @@ inplace-install-l:
 
 inplace-uninstall-l:
 # bindir gets removed from the main Makefile
-	rm -f $(domserver_libdir)/dj_utils.py
+	-rm -f $(domserver_libdir)/dj_utils.py
 
 clean-l:
 	-rm -f $(TARGETS) $(OBJECTS)
