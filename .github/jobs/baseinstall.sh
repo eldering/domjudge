@@ -50,32 +50,30 @@ cat > ~/.my.cnf <<EOF
 [client]
 host=sqlserver
 user=root
-password=root
+password=mysql_root_password
 EOF
 cat ~/.my.cnf
 
-mysql_root "CREATE DATABASE IF NOT EXISTS \`domjudge\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql_root "CREATE USER IF NOT EXISTS \`domjudge\`@'%' IDENTIFIED BY 'domjudge';"
-mysql_root "GRANT SELECT, INSERT, UPDATE, DELETE ON \`domjudge\`.* TO 'domjudge'@'%';"
-mysql_root "FLUSH PRIVILEGES;"
+mysql_log "CREATE DATABASE IF NOT EXISTS \`domjudge\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql_log "CREATE USER IF NOT EXISTS \`domjudge\`@'%' IDENTIFIED BY 'domjudge';"
+mysql_log "GRANT SELECT, INSERT, UPDATE, DELETE ON \`domjudge\`.* TO 'domjudge'@'%';"
+mysql_log "FLUSH PRIVILEGES;"
+echo "unused:sqlserver:domjudge:domjudge:domjudge:3306" > /opt/domjudge/domserver/etc/dbpasswords.secret
 
 # Show some MySQL debugging
-mysql_root "show databases"
-mysql_root "SELECT CURRENT_USER();"
-mysql_root "SELECT USER();"
-mysql_root "SELECT user,host FROM mysql.user"
-echo "unused:sqlserver:domjudge:domjudge:domjudge:3306" > /opt/domjudge/domserver/etc/dbpasswords.secret
-mysql_user "SELECT CURRENT_USER();"
-mysql_user "SELECT USER();"
+mysql_log "show databases"
+mysql_log "SELECT CURRENT_USER();"
+mysql_log "SELECT USER();"
+mysql_log "SELECT user,host FROM mysql.user"
 section_end
 
 if [ "${db}" = "install" ]; then
     section_start "Install DOMjudge database"
-    /opt/domjudge/domserver/bin/dj_setup_database -uroot -proot bare-install
+    /opt/domjudge/domserver/bin/dj_setup_database bare-install
     section_end
 elif [ "${db}" = "upgrade" ]; then
     section_start "Upgrade DOMjudge database"
-    /opt/domjudge/domserver/bin/dj_setup_database -uroot -proot upgrade
+    /opt/domjudge/domserver/bin/dj_setup_database upgrade
     section_end
 fi
 
@@ -113,30 +111,29 @@ section_end
 
 if [ "${db}" = "install" ]; then
     section_start "Install the example data"
-    /opt/domjudge/domserver/bin/dj_setup_database -uroot -proot install-examples | tee -a "$ARTIFACTS/mysql.txt"
+    /opt/domjudge/domserver/bin/dj_setup_database install-examples | tee -a "$ARTIFACTS/mysql.txt"
     section_end
 fi
 
 section_start "Setup user"
 # We're using the admin user in all possible roles
-mysql_root "DELETE FROM userrole WHERE userid=1;" domjudge
+mysql_log "DELETE FROM userrole WHERE userid=1;" domjudge
 if [ "$version" = "team" ]; then
     # Add team to admin user
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 3);" domjudge
-    mysql_root "UPDATE user SET teamid = 1 WHERE userid = 1;" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 3);" domjudge
+    mysql_log "UPDATE user SET teamid = 1 WHERE userid = 1;" domjudge
 elif [ "$version" = "jury" ]; then
     # Add jury to admin user
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 2);" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 2);" domjudge
 elif [ "$version" = "balloon" ]; then
     # Add balloon to admin user
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 4);" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 4);" domjudge
 elif [ "$version" = "admin" ]; then
     # Add admin to admin user
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 1);" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 1);" domjudge
 elif [ "$version" = "all" ]; then
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 1);" domjudge
-    mysql_root "INSERT INTO userrole (userid, roleid) VALUES (1, 3);" domjudge
-    mysql_root "UPDATE user SET teamid = 1 WHERE userid = 1;" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 1);" domjudge
+    mysql_log "INSERT INTO userrole (userid, roleid) VALUES (1, 3);" domjudge
+    mysql_log "UPDATE user SET teamid = 1 WHERE userid = 1;" domjudge
 fi
 section_end
-
