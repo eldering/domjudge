@@ -28,8 +28,6 @@ jobs:
         run: mysql -hsqlserver -uroot -proot < .github/jobs/data/dj733.sql
       - name: Upgrade DOMjudge
         run: .github/jobs/baseinstall.sh default upgrade
-      - name: Setting initial Admin Password
-        run: echo "pass" > /opt/domjudge/domserver/etc/initial_admin_password.secret
       - name: Check for Errors in the Upgrade
         run: mysql -hsqlserver -uroot -proot -e "SHOW TABLES FROM domjudge;"
       - name: Check for Errors in Domjudge Web
